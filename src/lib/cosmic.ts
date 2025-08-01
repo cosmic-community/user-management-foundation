@@ -12,7 +12,6 @@ import {
 const cosmic = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
   readKey: process.env.COSMIC_READ_KEY as string,
-  apiEnvironment: "staging"
 });
 
 // Initialize Cosmic client for write operations (server-side only)
@@ -20,7 +19,6 @@ const cosmicWrite = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
   readKey: process.env.COSMIC_READ_KEY as string,
   writeKey: process.env.COSMIC_WRITE_KEY as string,
-  apiEnvironment: "staging"
 });
 
 // User Profile functions
@@ -62,6 +60,25 @@ export async function getUserProfileByEmail(email: string): Promise<UserProfile 
       .find({ 
         type: 'user-profiles',
         'metadata.email': email
+      })
+      .props(['id', 'title', 'slug', 'metadata'])
+      .depth(1);
+    
+    return response.objects.length > 0 ? response.objects[0] as UserProfile : null;
+  } catch (error) {
+    if ((error as any)?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function getUserProfileByUsername(username: string): Promise<UserProfile | null> {
+  try {
+    const response = await cosmic.objects
+      .find({ 
+        type: 'user-profiles',
+        'metadata.username': username
       })
       .props(['id', 'title', 'slug', 'metadata'])
       .depth(1);
@@ -155,43 +172,6 @@ export async function getAuthenticationLogs(userId?: string): Promise<Authentica
     }
     throw error;
   }
-}
-
-export async function createAuthenticationLog(logData: {
-  title: string;
-  user?: string;
-  action_type: { key: string; value: string };
-  timestamp: string;
-  ip_address: string;
-  device_info?: string;
-  success: boolean;
-  failure_reason?: string;
-}): Promise<AuthenticationLog> {
-  const metadata: any = {
-    action_type: logData.action_type,
-    timestamp: logData.timestamp,
-    ip_address: logData.ip_address,
-    success: logData.success,
-  };
-
-  if (logData.user) {
-    metadata.user = logData.user;
-  }
-  if (logData.device_info) {
-    metadata.device_info = logData.device_info;
-  }
-  if (logData.failure_reason) {
-    metadata.failure_reason = logData.failure_reason;
-  }
-
-  const response = await cosmicWrite.objects.insertOne({
-    title: logData.title,
-    type: 'authentication-logs',
-    metadata,
-    status: 'published'
-  });
-  
-  return response.object as AuthenticationLog;
 }
 
 // Server-side write operations

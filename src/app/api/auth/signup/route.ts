@@ -39,13 +39,13 @@ export async function POST(request: NextRequest) {
       // Log the successful registration
       const clientIP = request.headers.get('x-forwarded-for') || 
                       request.headers.get('x-real-ip') || 
-                      'unknown';
+                      '127.0.0.1';
       
       const userAgent = request.headers.get('user-agent') || 'unknown';
 
       await createAuthenticationLog({
         userId: result.userId,
-        actionType: 'email_verification', // Since account is created but not verified
+        actionType: 'email_verification',
         ipAddress: clientIP,
         deviceInfo: userAgent,
         success: true
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       // Log the failed registration attempt
       const clientIP = request.headers.get('x-forwarded-for') || 
                       request.headers.get('x-real-ip') || 
-                      'unknown';
+                      '127.0.0.1';
       
       const userAgent = request.headers.get('user-agent') || 'unknown';
 

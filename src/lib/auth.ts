@@ -1,8 +1,6 @@
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
-import { cosmicWrite, getUserProfileByEmail, getUserProfileBySlug } from './cosmic';
+import { cosmicWrite, getUserProfileByEmail, getUserProfileBySlug, getUserProfileByUsername } from './cosmic';
 import { CreateUserData, AuthResponse } from '@/src/types/auth';
-import { UserProfile } from '@/src/types/user';
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
@@ -33,19 +31,9 @@ export async function checkEmailExists(email: string): Promise<boolean> {
 
 export async function checkUsernameExists(username: string): Promise<boolean> {
   try {
-    // First check if the username exists as a slug
-    const existingUser = await getUserProfileBySlug(username.toLowerCase());
-    if (existingUser) return true;
-    
-    // Also check if any user has this username in their metadata
-    const users = await cosmicWrite.objects
-      .find({ 
-        type: 'user-profiles',
-        'metadata.username': username
-      })
-      .props(['id']);
-    
-    return users.objects.length > 0;
+    // Check if any user has this username in their metadata
+    const existingUser = await getUserProfileByUsername(username);
+    return existingUser !== null;
   } catch (error) {
     console.error('Error checking username existence:', error);
     return false;
