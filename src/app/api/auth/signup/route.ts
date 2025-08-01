@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
     // Get client information for logging
     const clientIP = request.headers.get('x-forwarded-for') || 
                     request.headers.get('x-real-ip') || 
-                    request.ip ||
                     '127.0.0.1';
     
     const userAgent = request.headers.get('user-agent') || 'unknown';
