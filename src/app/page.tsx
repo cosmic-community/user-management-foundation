@@ -23,6 +23,20 @@ export default async function HomePage() {
             A comprehensive user management system built with Next.js and Cosmic CMS,
             featuring user profiles, preferences, sessions, and authentication logging.
           </p>
+          
+          {/* Sign Up Call to Action */}
+          <div className="mt-6">
+            <a
+              href="/signup"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              Try the Sign Up Feature
+              <span className="ml-2">→</span>
+            </a>
+            <p className="mt-2 text-sm text-gray-500">
+              Experience the complete user registration flow
+            </p>
+          </div>
         </div>
 
         {error ? (
@@ -131,6 +145,39 @@ export default async function HomePage() {
             </p>
             <div className="text-sm text-gray-500">
               Headless CMS
+            </div>
+          </div>
+        </div>
+
+        {/* Sign Up Feature Highlight */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-8 mb-12 text-white">
+          <div className="text-center">
+            <h3 className="text-2xl font-bold mb-4">
+              ✨ New: User Registration System
+            </h3>
+            <p className="text-lg mb-6 text-blue-100">
+              Complete sign-up functionality with form validation, password hashing, 
+              and automatic user profile creation in Cosmic CMS.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-white/10 rounded-lg p-4">
+                <div className="font-semibold mb-2">🔒 Secure</div>
+                <div className="text-blue-100">
+                  Passwords are hashed with bcrypt and stored securely
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <div className="font-semibold mb-2">✅ Validated</div>
+                <div className="text-blue-100">
+                  Comprehensive form validation with real-time feedback
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <div className="font-semibold mb-2">📊 Tracked</div>
+                <div className="text-blue-100">
+                  All registration attempts are logged for security
+                </div>
+              </div>
             </div>
           </div>
         </div>
