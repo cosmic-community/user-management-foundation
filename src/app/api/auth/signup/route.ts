@@ -17,17 +17,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate email format
-    if (!validateEmail(email)) {
+    const emailError = validateEmail(email);
+    if (emailError) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { error: emailError },
         { status: 400 }
       );
     }
 
     // Validate password strength
-    if (!validatePassword(password)) {
+    const passwordError = validatePassword(password);
+    if (passwordError) {
       return NextResponse.json(
-        { error: 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character' },
+        { error: passwordError },
         { status: 400 }
       );
     }
