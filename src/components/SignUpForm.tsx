@@ -209,7 +209,7 @@ export default function SignUpForm() {
           <p className="text-sm text-red-600">{errors.bio}</p>
         )}
         <p className="text-sm text-gray-500">
-          {formData.bio.length}/500 characters
+          {formData.bio?.length || 0}/500 characters
         </p>
       </div>
 
