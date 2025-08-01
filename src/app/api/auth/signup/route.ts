@@ -1,115 +1,194 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createUserProfile, createAuthenticationLog } from '@/src/lib/auth';
-import { validateSignUpForm } from '@/src/utils/validation';
-import { SignUpFormData, CreateUserData } from '@/src/types/auth';
+import bcrypt from 'bcryptjs';
+import { cosmic } from '@/lib/cosmic';
+import { validateEmail, validatePassword } from '@/utils/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== SIGNUP API CALLED ===');
-    
-    // Parse request body
-    let body: SignUpFormData;
-    try {
-      body = await request.json();
-      console.log('Request body parsed successfully for email:', body.email);
-    } catch (parseError) {
-      console.error('Error parsing request body:', parseError);
-      return NextResponse.json({
-        success: false,
-        message: 'Invalid request format'
-      }, { status: 400 });
-    }
-    
-    // Validate the form data
-    console.log('Validating form data...');
-    const validationErrors = validateSignUpForm(body);
-    if (Object.keys(validationErrors).length > 0) {
-      console.log('Validation errors found:', validationErrors);
-      return NextResponse.json({
-        success: false,
-        message: 'Please correct the errors below',
-        errors: validationErrors
-      }, { status: 400 });
-    }
-    console.log('Form validation passed');
+    const body = await request.json();
+    const { firstName, lastName, email, password, phone, username } = body;
 
-    // Prepare user data (password will be hashed in createUserProfile)
-    const userData: CreateUserData = {
-      firstName: body.firstName.trim(),
-      lastName: body.lastName.trim(),
-      email: body.email.toLowerCase().trim(),
-      username: body.username.trim(),
-      passwordHash: body.password, // This will be hashed in createUserProfile
-      phone: body.phone?.trim() || undefined,
-      bio: body.bio?.trim() || undefined,
-      profileVisibility: body.profileVisibility
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    if (!validatePassword(password)) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already exists
+    try {
+      const { objects: existingUsers } = await cosmic.objects
+        .find({ type: 'user-profiles', 'metadata.email': email })
+        .props(['id', 'metadata.email'])
+        .limit(1);
+
+      if (existingUsers && existingUsers.length > 0) {
+        return NextResponse.json(
+          { error: 'User with this email already exists' },
+          { status: 409 }
+        );
+      }
+    } catch (error) {
+      // If no users found, continue with registration
+      console.log('No existing users found, proceeding with registration');
+    }
+
+    // Hash password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Create user profile
+    const userProfile = {
+      title: `${firstName} ${lastName}`,
+      type: 'user-profiles',
+      status: 'published',
+      metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        username: username || '',
+        phone: phone || '',
+        bio: '',
+        date_joined: new Date().toISOString().split('T')[0],
+        is_active: true,
+        email_verified: false,
+        profile_visibility: {
+          key: 'public',
+          value: 'Public'
+        }
+      }
     };
 
-    console.log('User data prepared, creating profile...');
+    // Create user profile in Cosmic
+    const { object: newUser } = await cosmic.objects.insertOne(userProfile);
 
-    // Create the user profile
-    const result = await createUserProfile(userData);
-
-    // Get client information for logging
-    const clientIP = request.headers.get('x-forwarded-for') || 
-                    request.headers.get('x-real-ip') || 
-                    '127.0.0.1';
-    
-    const userAgent = request.headers.get('user-agent') || 'unknown';
-
-    if (result.success) {
-      console.log('✅ User created successfully! ID:', result.userId);
-      
-      // Log the successful registration
-      await createAuthenticationLog({
-        userId: result.userId,
-        actionType: 'email_verification',
-        ipAddress: clientIP,
-        deviceInfo: userAgent,
-        success: true
-      });
-
-      return NextResponse.json({
+    // Log successful registration
+    const authLog = {
+      title: `Registration Success - ${firstName} ${lastName}`,
+      type: 'authentication-logs',
+      status: 'published',
+      metadata: {
+        user: newUser.id,
+        action_type: {
+          key: 'registration_success',
+          value: 'Registration Success'
+        },
+        timestamp: new Date().toISOString().split('T')[0],
+        ip_address: request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   '127.0.0.1',
+        device_info: request.headers.get('user-agent') || 'Unknown',
         success: true,
-        message: result.message,
-        userId: result.userId
-      });
-    } else {
-      console.log('❌ User creation failed:', result.message);
+        failure_reason: ''
+      }
+    };
+
+    try {
+      await cosmic.objects.insertOne(authLog);
+    } catch (logError) {
+      console.error('Failed to log registration:', logError);
+      // Don't fail the registration if logging fails
+    }
+
+    // Create default user preferences
+    const userPreferences = {
+      title: `${firstName} ${lastName} Preferences`,
+      type: 'user-preferences',
+      status: 'published',
+      metadata: {
+        user: newUser.id,
+        theme_preference: {
+          key: 'light',
+          value: 'Light'
+        },
+        notification_email: true,
+        notification_push: false,
+        newsletter_subscription: false,
+        privacy_level: {
+          key: 'moderate',
+          value: 'Moderate'
+        },
+        language: {
+          key: 'en',
+          value: 'English'
+        },
+        timezone: {
+          key: 'UTC',
+          value: 'UTC'
+        }
+      }
+    };
+
+    try {
+      await cosmic.objects.insertOne(userPreferences);
+    } catch (prefError) {
+      console.error('Failed to create user preferences:', prefError);
+      // Don't fail the registration if preferences creation fails
+    }
+
+    return NextResponse.json(
+      { 
+        message: 'User registered successfully',
+        user: {
+          id: newUser.id,
+          email: email,
+          firstName: firstName,
+          lastName: lastName
+        }
+      },
+      { status: 201 }
+    );
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    
+    // Log failed registration attempt
+    try {
+      const body = await request.clone().json();
+      const authLog = {
+        title: `Registration Failed - ${body.email}`,
+        type: 'authentication-logs',
+        status: 'published',
+        metadata: {
+          action_type: {
+            key: 'registration_failed',
+            value: 'Registration Failed'
+          },
+          timestamp: new Date().toISOString().split('T')[0],
+          ip_address: request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     '127.0.0.1',
+          device_info: request.headers.get('user-agent') || 'Unknown',
+          success: false,
+          failure_reason: 'Server error during registration'
+        }
+      };
       
-      // Log the failed registration attempt
-      await createAuthenticationLog({
-        actionType: 'login_failed',
-        ipAddress: clientIP,
-        deviceInfo: userAgent,
-        success: false,
-        failureReason: result.message
-      });
-
-      return NextResponse.json({
-        success: false,
-        message: result.message,
-        errors: result.errors
-      }, { status: 400 });
+      await cosmic.objects.insertOne(authLog);
+    } catch (logError) {
+      console.error('Failed to log registration error:', logError);
     }
 
-  } catch (error: any) {
-    console.error('❌ SIGNUP API ERROR:', error);
-    
-    // More detailed error logging
-    if (error?.message) {
-      console.error('Error message:', error.message);
-    }
-    if (error?.stack) {
-      console.error('Error stack:', error.stack);
-    }
-    if (error?.cause) {
-      console.error('Error cause:', error.cause);
-    }
-    
-    return NextResponse.json({
-      success: false,
-      message: 'An unexpected error occurred. Please try again later.'
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
