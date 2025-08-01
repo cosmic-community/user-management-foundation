@@ -12,6 +12,7 @@ import {
 const cosmic = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
   readKey: process.env.COSMIC_READ_KEY as string,
+  apiEnvironment: "staging"
 });
 
 // Initialize Cosmic client for write operations (server-side only)
@@ -19,6 +20,7 @@ const cosmicWrite = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
   readKey: process.env.COSMIC_READ_KEY as string,
   writeKey: process.env.COSMIC_WRITE_KEY as string,
+  apiEnvironment: "staging"
 });
 
 // User Profile functions
@@ -73,7 +75,7 @@ export async function getUserProfileByEmail(email: string): Promise<UserProfile 
   }
 }
 
-export async function getUserProfileByUsername(username: string): Promise<UserProfile | null> {
+export async function getUserProfileByUsername(username: String): Promise<UserProfile | null> {
   try {
     const response = await cosmic.objects
       .find({ 
