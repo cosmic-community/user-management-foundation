@@ -21,6 +21,7 @@ export interface UserProfileMetadata {
   last_name: string;
   email: string;
   username?: string;
+  password_hash?: string; // Added password hash field
   phone?: string;
   avatar?: {
     url: string;
@@ -44,7 +45,7 @@ export interface UserProfile extends CosmicObject {
 
 // User Preferences Types
 export interface UserPreferencesMetadata {
-  user: UserProfile;
+  user: UserProfile | string; // Can be either full object or ID
   theme_preference: {
     key: string;
     value: string;
@@ -73,7 +74,7 @@ export interface UserPreferences extends CosmicObject {
 
 // User Session Types
 export interface UserSessionMetadata {
-  user: UserProfile;
+  user: UserProfile | string; // Can be either full object or ID
   session_token: string;
   device_info?: string;
   ip_address: string;
@@ -89,7 +90,7 @@ export interface UserSession extends CosmicObject {
 
 // Authentication Log Types
 export interface AuthenticationLogMetadata {
-  user?: UserProfile;
+  user?: UserProfile | string; // Can be either full object or ID
   action_type: {
     key: string;
     value: string;

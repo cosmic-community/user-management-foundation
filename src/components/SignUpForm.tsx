@@ -38,6 +38,11 @@ export default function SignUpForm() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+    
+    // Clear submit message when user starts typing
+    if (submitMessage) {
+      setSubmitMessage(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,15 +50,20 @@ export default function SignUpForm() {
     setIsSubmitting(true);
     setSubmitMessage(null);
 
+    console.log('Form submitted with data:', { ...formData, password: '[HIDDEN]', confirmPassword: '[HIDDEN]' });
+
     // Validate form
     const validationErrors = validateSignUpForm(formData);
     if (Object.keys(validationErrors).length > 0) {
+      console.log('Form validation failed:', validationErrors);
       setErrors(validationErrors);
       setIsSubmitting(false);
       return;
     }
 
     try {
+      console.log('Sending signup request...');
+      
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -62,10 +72,15 @@ export default function SignUpForm() {
         body: JSON.stringify(formData),
       });
 
+      console.log('Response status:', response.status);
+      
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success) {
         setSubmitMessage({ type: 'success', text: data.message });
+        console.log('Account created successfully!');
+        
         // Reset form
         setFormData({
           firstName: '',
@@ -85,16 +100,17 @@ export default function SignUpForm() {
           router.push('/?signup=success');
         }, 2000);
       } else {
+        console.log('Signup failed:', data.message);
         setSubmitMessage({ type: 'error', text: data.message });
         if (data.errors) {
           setErrors(data.errors);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign up error:', error);
       setSubmitMessage({ 
         type: 'error', 
-        text: 'An unexpected error occurred. Please try again.' 
+        text: 'Network error. Please check your connection and try again.' 
       });
     } finally {
       setIsSubmitting(false);

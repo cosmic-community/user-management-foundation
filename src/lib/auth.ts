@@ -41,9 +41,12 @@ export async function checkUsernameExists(username: string): Promise<boolean> {
 
 export async function createUserProfile(userData: CreateUserData): Promise<AuthResponse> {
   try {
+    console.log('Creating user profile for:', userData.email);
+
     // Check if email already exists
     const emailExists = await checkEmailExists(userData.email);
     if (emailExists) {
+      console.log('Email already exists:', userData.email);
       return {
         success: false,
         message: 'An account with this email already exists',
@@ -54,12 +57,17 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
     // Check if username already exists
     const usernameExists = await checkUsernameExists(userData.username);
     if (usernameExists) {
+      console.log('Username already exists:', userData.username);
       return {
         success: false,
         message: 'This username is already taken',
         errors: { username: 'Username already taken' }
       };
     }
+
+    // Hash the password
+    console.log('Hashing password...');
+    const hashedPassword = await hashPassword(userData.passwordHash);
 
     // Generate a unique slug
     let slug = generateSlug(userData.firstName, userData.lastName, userData.username);
@@ -68,13 +76,13 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
     // Keep trying until we find a unique slug
     while (counter < 100) { // Prevent infinite loops
       try {
-        const existingUserWithSlug = await cosmicWrite.objects.findOne({
+        const response = await cosmicWrite.objects.findOne({
           type: 'user-profiles',
           slug: slug
         });
         
         // If we found a user with this slug, try a different one
-        if (existingUserWithSlug) {
+        if (response?.object) {
           slug = `${generateSlug(userData.firstName, userData.lastName, userData.username)}-${counter}`;
           counter++;
         } else {
@@ -85,9 +93,12 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
         if (error?.status === 404) {
           break;
         }
+        console.error('Error checking slug uniqueness:', error);
         throw error;
       }
     }
+
+    console.log('Creating user with slug:', slug);
 
     // Create the user profile
     const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -102,6 +113,7 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
         last_name: userData.lastName,
         email: userData.email,
         username: userData.username,
+        password_hash: hashedPassword, // Store the hashed password
         phone: userData.phone || '',
         bio: userData.bio || '',
         date_joined: currentDate,
@@ -115,6 +127,8 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
       }
     });
 
+    console.log('User created successfully:', newUser.object.id);
+
     // Create default user preferences
     await createDefaultUserPreferences(newUser.object.id);
 
@@ -124,17 +138,29 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
       userId: newUser.object.id
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating user profile:', error);
+    
+    // Provide more specific error messages based on the error
+    let errorMessage = 'Failed to create account. Please try again.';
+    
+    if (error?.message?.includes('validation')) {
+      errorMessage = 'Please check your information and try again.';
+    } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      errorMessage = 'Network error. Please check your connection and try again.';
+    }
+
     return {
       success: false,
-      message: 'Failed to create account. Please try again.',
+      message: errorMessage,
     };
   }
 }
 
 async function createDefaultUserPreferences(userId: string): Promise<void> {
   try {
+    console.log('Creating default preferences for user:', userId);
+    
     await cosmicWrite.objects.insertOne({
       title: `User Preferences - ${userId}`,
       slug: `preferences-${userId}`,
@@ -163,6 +189,8 @@ async function createDefaultUserPreferences(userId: string): Promise<void> {
         }
       }
     });
+    
+    console.log('Default preferences created successfully');
   } catch (error) {
     console.error('Error creating default user preferences:', error);
     // Don't throw here - user creation should still succeed even if preferences fail
