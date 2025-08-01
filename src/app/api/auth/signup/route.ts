@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createUserProfile, hashPassword, createAuthenticationLog } from '@/src/lib/auth';
+import { createUserProfile, createAuthenticationLog } from '@/src/lib/auth';
 import { validateSignUpForm } from '@/src/utils/validation';
 import { SignUpFormData, CreateUserData } from '@/src/types/auth';
 
@@ -17,16 +17,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Hash the password
-    const passwordHash = await hashPassword(body.password);
-
-    // Prepare user data
+    // Prepare user data (password will be handled differently - not stored in user profile)
     const userData: CreateUserData = {
       firstName: body.firstName.trim(),
       lastName: body.lastName.trim(),
       email: body.email.toLowerCase().trim(),
       username: body.username.trim(),
-      passwordHash,
+      passwordHash: body.password, // This will be handled properly in createUserProfile
       phone: body.phone?.trim() || undefined,
       bio: body.bio?.trim() || undefined,
       profileVisibility: body.profileVisibility

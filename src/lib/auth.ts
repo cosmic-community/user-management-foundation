@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { cosmicWrite, getUserProfileByEmail, getUserProfileBySlug, getUserProfileByUsername } from './cosmic';
+import { cosmicWrite, getUserProfileByEmail, getUserProfileByUsername } from './cosmic';
 import { CreateUserData, AuthResponse } from '@/src/types/auth';
 
 export async function hashPassword(password: string): Promise<string> {
@@ -31,7 +31,6 @@ export async function checkEmailExists(email: string): Promise<boolean> {
 
 export async function checkUsernameExists(username: string): Promise<boolean> {
   try {
-    // Check if any user has this username in their metadata
     const existingUser = await getUserProfileByUsername(username);
     return existingUser !== null;
   } catch (error) {
@@ -64,17 +63,30 @@ export async function createUserProfile(userData: CreateUserData): Promise<AuthR
 
     // Generate a unique slug
     let slug = generateSlug(userData.firstName, userData.lastName, userData.username);
-    let slugExists = await getUserProfileBySlug(slug);
     let counter = 1;
 
-    while (slugExists) {
-      const newSlug = `${slug}-${counter}`;
-      slugExists = await getUserProfileBySlug(newSlug);
-      if (!slugExists) {
-        slug = newSlug;
-        break;
+    // Keep trying until we find a unique slug
+    while (counter < 100) { // Prevent infinite loops
+      try {
+        const existingUserWithSlug = await cosmicWrite.objects.findOne({
+          type: 'user-profiles',
+          slug: slug
+        });
+        
+        // If we found a user with this slug, try a different one
+        if (existingUserWithSlug) {
+          slug = `${generateSlug(userData.firstName, userData.lastName, userData.username)}-${counter}`;
+          counter++;
+        } else {
+          break;
+        }
+      } catch (error: any) {
+        // If we get a 404, the slug is available
+        if (error?.status === 404) {
+          break;
+        }
+        throw error;
       }
-      counter++;
     }
 
     // Create the user profile
