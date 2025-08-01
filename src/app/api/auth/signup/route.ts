@@ -5,21 +5,33 @@ import { SignUpFormData, CreateUserData } from '@/src/types/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Signup API called');
+    console.log('=== SIGNUP API CALLED ===');
     
-    const body: SignUpFormData = await request.json();
-    console.log('Received signup data for:', body.email);
+    // Parse request body
+    let body: SignUpFormData;
+    try {
+      body = await request.json();
+      console.log('Request body parsed successfully for email:', body.email);
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return NextResponse.json({
+        success: false,
+        message: 'Invalid request format'
+      }, { status: 400 });
+    }
     
     // Validate the form data
+    console.log('Validating form data...');
     const validationErrors = validateSignUpForm(body);
     if (Object.keys(validationErrors).length > 0) {
-      console.log('Validation errors:', validationErrors);
+      console.log('Validation errors found:', validationErrors);
       return NextResponse.json({
         success: false,
         message: 'Please correct the errors below',
         errors: validationErrors
       }, { status: 400 });
     }
+    console.log('Form validation passed');
 
     // Prepare user data (password will be hashed in createUserProfile)
     const userData: CreateUserData = {
@@ -33,21 +45,23 @@ export async function POST(request: NextRequest) {
       profileVisibility: body.profileVisibility
     };
 
-    console.log('Creating user profile...');
+    console.log('User data prepared, creating profile...');
 
     // Create the user profile
     const result = await createUserProfile(userData);
 
+    // Get client information for logging
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 
+                    request.ip ||
+                    '127.0.0.1';
+    
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
     if (result.success) {
-      console.log('User created successfully:', result.userId);
+      console.log('✅ User created successfully! ID:', result.userId);
       
       // Log the successful registration
-      const clientIP = request.headers.get('x-forwarded-for') || 
-                      request.headers.get('x-real-ip') || 
-                      '127.0.0.1';
-      
-      const userAgent = request.headers.get('user-agent') || 'unknown';
-
       await createAuthenticationLog({
         userId: result.userId,
         actionType: 'email_verification',
@@ -62,15 +76,9 @@ export async function POST(request: NextRequest) {
         userId: result.userId
       });
     } else {
-      console.log('User creation failed:', result.message);
+      console.log('❌ User creation failed:', result.message);
       
       // Log the failed registration attempt
-      const clientIP = request.headers.get('x-forwarded-for') || 
-                      request.headers.get('x-real-ip') || 
-                      '127.0.0.1';
-      
-      const userAgent = request.headers.get('user-agent') || 'unknown';
-
       await createAuthenticationLog({
         actionType: 'login_failed',
         ipAddress: clientIP,
@@ -87,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('Sign up API error:', error);
+    console.error('❌ SIGNUP API ERROR:', error);
     
     // More detailed error logging
     if (error?.message) {
@@ -96,10 +104,13 @@ export async function POST(request: NextRequest) {
     if (error?.stack) {
       console.error('Error stack:', error.stack);
     }
+    if (error?.cause) {
+      console.error('Error cause:', error.cause);
+    }
     
     return NextResponse.json({
       success: false,
-      message: 'An unexpected error occurred. Please try again.'
+      message: 'An unexpected error occurred. Please try again later.'
     }, { status: 500 });
   }
 }

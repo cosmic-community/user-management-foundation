@@ -8,11 +8,23 @@ import {
   CosmicSingleResponse
 } from '@/src/types/user';
 
+// Validate environment variables
+if (!process.env.COSMIC_BUCKET_SLUG) {
+  throw new Error('COSMIC_BUCKET_SLUG environment variable is required');
+}
+
+if (!process.env.COSMIC_READ_KEY) {
+  throw new Error('COSMIC_READ_KEY environment variable is required');
+}
+
+if (!process.env.COSMIC_WRITE_KEY) {
+  throw new Error('COSMIC_WRITE_KEY environment variable is required');
+}
+
 // Initialize Cosmic client for read operations
 const cosmic = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
   readKey: process.env.COSMIC_READ_KEY as string,
-  apiEnvironment: "staging"
 });
 
 // Initialize Cosmic client for write operations (server-side only)
@@ -20,7 +32,6 @@ const cosmicWrite = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
   readKey: process.env.COSMIC_READ_KEY as string,
   writeKey: process.env.COSMIC_WRITE_KEY as string,
-  apiEnvironment: "staging"
 });
 
 // User Profile functions
@@ -33,6 +44,7 @@ export async function getUserProfiles(): Promise<UserProfile[]> {
     
     return response.objects as UserProfile[];
   } catch (error: any) {
+    console.error('Error fetching user profiles:', error);
     if (error?.status === 404) {
       return [];
     }
@@ -49,6 +61,7 @@ export async function getUserProfileBySlug(slug: string): Promise<UserProfile | 
     
     return response.object as UserProfile;
   } catch (error: any) {
+    console.error(`Error fetching user profile by slug ${slug}:`, error);
     if (error?.status === 404) {
       return null;
     }
@@ -68,6 +81,7 @@ export async function getUserProfileByEmail(email: string): Promise<UserProfile 
     
     return response.objects.length > 0 ? response.objects[0] as UserProfile : null;
   } catch (error: any) {
+    console.error(`Error fetching user profile by email ${email}:`, error);
     if (error?.status === 404) {
       return null;
     }
@@ -87,6 +101,7 @@ export async function getUserProfileByUsername(username: string): Promise<UserPr
     
     return response.objects.length > 0 ? response.objects[0] as UserProfile : null;
   } catch (error: any) {
+    console.error(`Error fetching user profile by username ${username}:`, error);
     if (error?.status === 404) {
       return null;
     }
@@ -107,6 +122,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     
     return response.objects.length > 0 ? response.objects[0] as UserPreferences : null;
   } catch (error: any) {
+    console.error(`Error fetching user preferences for user ${userId}:`, error);
     if (error?.status === 404) {
       return null;
     }
@@ -127,6 +143,7 @@ export async function getUserSessions(userId: string): Promise<UserSession[]> {
     
     return response.objects as UserSession[];
   } catch (error: any) {
+    console.error(`Error fetching user sessions for user ${userId}:`, error);
     if (error?.status === 404) {
       return [];
     }
@@ -147,6 +164,7 @@ export async function getActiveUserSessions(userId: string): Promise<UserSession
     
     return response.objects as UserSession[];
   } catch (error: any) {
+    console.error(`Error fetching active user sessions for user ${userId}:`, error);
     if (error?.status === 404) {
       return [];
     }
@@ -169,6 +187,7 @@ export async function getAuthenticationLogs(userId?: string): Promise<Authentica
     
     return response.objects as AuthenticationLog[];
   } catch (error: any) {
+    console.error('Error fetching authentication logs:', error);
     if (error?.status === 404) {
       return [];
     }
@@ -187,33 +206,43 @@ export async function createUserSession(sessionData: {
   expires_at: string;
   is_active: boolean;
 }): Promise<UserSession> {
-  const response = await cosmicWrite.objects.insertOne({
-    title: sessionData.title,
-    type: 'user-sessions',
-    metadata: {
-      user: sessionData.user,
-      session_token: sessionData.session_token,
-      device_info: sessionData.device_info,
-      ip_address: sessionData.ip_address,
-      login_timestamp: sessionData.login_timestamp,
-      expires_at: sessionData.expires_at,
-      is_active: sessionData.is_active,
-    },
-    status: 'published'
-  });
-  
-  return response.object as UserSession;
+  try {
+    const response = await cosmicWrite.objects.insertOne({
+      title: sessionData.title,
+      type: 'user-sessions',
+      metadata: {
+        user: sessionData.user,
+        session_token: sessionData.session_token,
+        device_info: sessionData.device_info,
+        ip_address: sessionData.ip_address,
+        login_timestamp: sessionData.login_timestamp,
+        expires_at: sessionData.expires_at,
+        is_active: sessionData.is_active,
+      },
+      status: 'published'
+    });
+    
+    return response.object as UserSession;
+  } catch (error) {
+    console.error('Error creating user session:', error);
+    throw error;
+  }
 }
 
 export async function updateUserSession(sessionId: string, updates: {
   is_active?: boolean;
   expires_at?: string;
 }): Promise<UserSession> {
-  const response = await cosmicWrite.objects.updateOne(sessionId, {
-    metadata: updates
-  });
-  
-  return response.object as UserSession;
+  try {
+    const response = await cosmicWrite.objects.updateOne(sessionId, {
+      metadata: updates
+    });
+    
+    return response.object as UserSession;
+  } catch (error) {
+    console.error('Error updating user session:', error);
+    throw error;
+  }
 }
 
 export { cosmic, cosmicWrite };
