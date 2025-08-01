@@ -1,5 +1,5 @@
-import { getUserProfiles } from '@/src/lib/cosmic';
-import { UserProfile } from '@/src/types/user';
+import { getUserProfiles } from '@/lib/cosmic';
+import { UserProfile } from '@/types/user';
 
 export default async function HomePage() {
   let users: UserProfile[] = [];

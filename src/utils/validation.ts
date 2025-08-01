@@ -1,4 +1,4 @@
-import { SignUpFormData, ValidationError, FormErrors } from '@/src/types/auth';
+import { SignUpFormData, ValidationError, FormErrors } from '@/types/auth';
 
 export function validateEmail(email: string): string | null {
   const emailRegex = /^[\w\.-]+@[\w\.-]+\.[a-zA-Z]{2,}$/;

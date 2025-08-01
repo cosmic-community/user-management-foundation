@@ -6,7 +6,7 @@ import {
   AuthenticationLog,
   CosmicResponse,
   CosmicSingleResponse
-} from '@/src/types/user';
+} from '@/types/user';
 
 // Validate environment variables
 if (!process.env.COSMIC_BUCKET_SLUG) {

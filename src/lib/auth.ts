@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { cosmicWrite, getUserProfileByEmail, getUserProfileByUsername } from './cosmic';
-import { UserProfile } from '@/src/types/user';
+import { UserProfile } from '@/types/user';
 
 export interface CreateUserData {
   firstName: string;
