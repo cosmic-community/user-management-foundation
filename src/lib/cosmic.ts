@@ -32,8 +32,8 @@ export async function getUserProfiles(): Promise<UserProfile[]> {
       .depth(1);
     
     return response.objects as UserProfile[];
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return [];
     }
     throw error;
@@ -48,8 +48,8 @@ export async function getUserProfileBySlug(slug: string): Promise<UserProfile | 
       .depth(1);
     
     return response.object as UserProfile;
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return null;
     }
     throw error;
@@ -67,15 +67,15 @@ export async function getUserProfileByEmail(email: string): Promise<UserProfile 
       .depth(1);
     
     return response.objects.length > 0 ? response.objects[0] as UserProfile : null;
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return null;
     }
     throw error;
   }
 }
 
-export async function getUserProfileByUsername(username: String): Promise<UserProfile | null> {
+export async function getUserProfileByUsername(username: string): Promise<UserProfile | null> {
   try {
     const response = await cosmic.objects
       .find({ 
@@ -86,8 +86,8 @@ export async function getUserProfileByUsername(username: String): Promise<UserPr
       .depth(1);
     
     return response.objects.length > 0 ? response.objects[0] as UserProfile : null;
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return null;
     }
     throw error;
@@ -106,8 +106,8 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
       .depth(1);
     
     return response.objects.length > 0 ? response.objects[0] as UserPreferences : null;
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return null;
     }
     throw error;
@@ -126,8 +126,8 @@ export async function getUserSessions(userId: string): Promise<UserSession[]> {
       .depth(1);
     
     return response.objects as UserSession[];
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return [];
     }
     throw error;
@@ -146,8 +146,8 @@ export async function getActiveUserSessions(userId: string): Promise<UserSession
       .depth(1);
     
     return response.objects as UserSession[];
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return [];
     }
     throw error;
@@ -168,8 +168,8 @@ export async function getAuthenticationLogs(userId?: string): Promise<Authentica
       .depth(1);
     
     return response.objects as AuthenticationLog[];
-  } catch (error) {
-    if ((error as any)?.status === 404) {
+  } catch (error: any) {
+    if (error?.status === 404) {
       return [];
     }
     throw error;
