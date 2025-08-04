@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { cosmic } from '@/lib/cosmic';
+import { cosmicWrite } from '@/lib/cosmic';
 import { validateEmail, validatePassword } from '@/utils/validation';
 
 export async function POST(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     try {
-      const { objects: existingUsers } = await cosmic.objects
+      const { objects: existingUsers } = await cosmicWrite.objects
         .find({ type: 'user-profiles', 'metadata.email': email })
         .props(['id', 'metadata.email'])
         .limit(1);
@@ -47,9 +47,11 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-    } catch (error) {
-      // If no users found, continue with registration
-      console.log('No existing users found, proceeding with registration');
+    } catch (error: any) {
+      // If no users found (404), continue with registration
+      if (error?.status !== 404) {
+        throw error;
+      }
     }
 
     // Hash password
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
         first_name: firstName,
         last_name: lastName,
         email: email,
+        password_hash: hashedPassword,
         username: username || '',
         phone: phone || '',
         bio: '',
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Create user profile in Cosmic
-    const { object: newUser } = await cosmic.objects.insertOne(userProfile);
+    const { object: newUser } = await cosmicWrite.objects.insertOne(userProfile);
 
     // Log successful registration
     const authLog = {
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest) {
     };
 
     try {
-      await cosmic.objects.insertOne(authLog);
+      await cosmicWrite.objects.insertOne(authLog);
     } catch (logError) {
       console.error('Failed to log registration:', logError);
       // Don't fail the registration if logging fails
@@ -139,7 +142,7 @@ export async function POST(request: NextRequest) {
     };
 
     try {
-      await cosmic.objects.insertOne(userPreferences);
+      await cosmicWrite.objects.insertOne(userPreferences);
     } catch (prefError) {
       console.error('Failed to create user preferences:', prefError);
       // Don't fail the registration if preferences creation fails
@@ -158,14 +161,14 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
     
     // Log failed registration attempt
     try {
       const body = await request.clone().json();
       const authLog = {
-        title: `Registration Failed - ${body.email}`,
+        title: `Registration Failed - ${body.email || 'Unknown'}`,
         type: 'authentication-logs',
         status: 'published',
         metadata: {
@@ -183,7 +186,7 @@ export async function POST(request: NextRequest) {
         }
       };
       
-      await cosmic.objects.insertOne(authLog);
+      await cosmicWrite.objects.insertOne(authLog);
     } catch (logError) {
       console.error('Failed to log registration error:', logError);
     }

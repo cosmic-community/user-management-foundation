@@ -21,7 +21,7 @@ export interface UserProfileMetadata {
   last_name: string;
   email: string;
   username?: string;
-  password_hash?: string; // Added password hash field
+  password_hash?: string; // Added password hash field for authentication
   phone?: string;
   avatar?: {
     url: string;
